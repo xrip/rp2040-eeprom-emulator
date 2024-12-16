@@ -1,0 +1,1 @@
+unsigned char rom[0xffff] = { 0 };
