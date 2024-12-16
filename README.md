@@ -1,7 +1,7 @@
 # RP2040 as EPROM / EEPROM emulator 
 Based on [PicoROM](https://github.com/nickbild/picoROM)
 
-Emulates 27c512 / 28c512 with only one pico, without any other electronic components 
+Emulates 27c512 / 28c512 with just a RP2040, without any other electronic components 
 
 *You should use **black chinese** Raspberry Pi Pico RP2040*
 
