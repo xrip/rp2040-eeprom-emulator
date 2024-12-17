@@ -23,7 +23,9 @@ target_sources(${PROJECT_NAME} PRIVATE main.c)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE pico_runtime)
 
-
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+        PICO_FLASH_SIZE_BYTES=16777216
+)
 
 pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
 set(PICO_COPY_TO_RAM 1)

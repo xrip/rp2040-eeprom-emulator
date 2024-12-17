@@ -17,19 +17,14 @@ static inline uint16_t get_requested_address() {
 }
 
 static inline void put_data_on_bus(const uint16_t address) {
-    gpio_put_masked(0xFF0000, rom_pointer[address] << 16);
+    gpio_put_masked(DATA_BUS_MASK, rom_pointer[address] << 16);
 }
 
 static inline void setup_gpio_pins() {
-    for (uint8_t i = 0; i < ADDRESS_BUS_WIDTH; i++) {
-        gpio_init(A0 + i);
-        gpio_set_dir(A0 + i, GPIO_IN);
-    }
+    gpio_init_mask(ADDRESS_BUS_MASK | DATA_BUS_MASK);
 
-    for (uint8_t i = 0; i < 8; i++) {
-        gpio_init(D0 + i);
-        gpio_set_dir(D0 + i, GPIO_OUT);
-    }
+    gpio_set_dir_in_masked(ADDRESS_BUS_MASK);
+    gpio_set_dir_out_masked(DATA_BUS_MASK);
 
     gpio_init(CE_PIN);
     gpio_set_dir(CE_PIN, GPIO_IN);
@@ -60,10 +55,10 @@ int main() {
 #endif
 
         if (output_enabled) {
-            gpio_set_dir_out_masked(DATA_BUS_PINS);
+            gpio_set_dir_out_masked(DATA_BUS_MASK);
             put_data_on_bus(get_requested_address());
         } else {
-            gpio_set_dir_in_masked(DATA_BUS_PINS);
+            gpio_set_dir_in_masked(DATA_BUS_MASK);
         }
 
         tight_loop_contents();
