@@ -26,8 +26,14 @@ static inline void setup_gpio_pins() {
     gpio_set_dir_in_masked(ADDRESS_BUS_MASK);
     gpio_set_dir_out_masked(DATA_BUS_MASK);
 
-    gpio_init(CE_PIN);
-    gpio_set_dir(CE_PIN, GPIO_IN);
+    gpio_init(RD_PIN);
+    gpio_set_dir(RD_PIN, GPIO_IN);
+
+    gpio_init(WR_PIN);
+    gpio_set_dir(WR_PIN, GPIO_IN);
+
+    gpio_init(IORQ_PIN);
+    gpio_set_dir(IORQ_PIN, GPIO_IN);
 }
 
 
@@ -48,15 +54,24 @@ int main() {
 
     // Listen the BUS
     while (1) {
-        const uint8_t output_enabled = !gpio_get(CE_PIN); // Check if your CE/OE signal isn't inverted
+        const uint8_t rd = !gpio_get(RD_PIN);
+        const uint8_t wr = !gpio_get(WR_PIN);
+        const uint8_t iorq = !gpio_get(IORQ_PIN);
 
 #if DEBUG
         gpio_put(PICO_DEFAULT_LED_PIN, !output_enabled);
 #endif
 
-        if (output_enabled) {
-            gpio_set_dir_out_masked(DATA_BUS_MASK);
-            put_data_on_bus(get_requested_address());
+        if (!iorq) {
+            const uint32_t bus = gpio_get_all();
+            const uint16_t address = bus & ADDRESS_BUS_MASK;
+            if (rd) {
+                gpio_set_dir_out_masked(DATA_BUS_MASK);
+                put_data_on_bus(address);
+            } else /* if (wr) */ {
+                gpio_set_dir_in_masked(DATA_BUS_MASK);
+                rom_pointer[address] = bus >> 16;
+            }
         } else {
             gpio_set_dir_in_masked(DATA_BUS_MASK);
         }

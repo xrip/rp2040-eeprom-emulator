@@ -10,5 +10,6 @@
 // Data bus start GPIO pin
 #define D0 16
 
-// OE/CE pin
-#define CE_PIN 28
+#define WR_PIN 27
+#define RD_PIN 28
+#define IORQ_PIN 29
