@@ -10,15 +10,7 @@
 //#define DEBUG 1
 
 // Pointer needed if we want implement some sort of mapper that adds offset ot rom start. 
-uint8_t *rom_pointer;
-
-static inline uint16_t get_requested_address() {
-    return gpio_get_all() & ADDRESS_BUS_MASK;
-}
-
-static inline void put_data_on_bus(const uint16_t address) {
-    gpio_put_masked(DATA_BUS_MASK, rom_pointer[address] << 16);
-}
+uint8_t *MEMORY;
 
 static inline void setup_gpio_pins() {
     gpio_init_mask(ADDRESS_BUS_MASK | DATA_BUS_MASK);
@@ -36,7 +28,6 @@ static inline void setup_gpio_pins() {
     gpio_set_dir(IORQ_PIN, GPIO_IN);
 }
 
-
 int main() {
     // Set system clock speed.
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
@@ -44,33 +35,32 @@ int main() {
     set_sys_clock_khz(372 * 1000, true);
 
 #if DEBUG
+    uint8_t led = 0;
+
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 #endif
-
     setup_gpio_pins();
 
-    rom_pointer = rom;
+    MEMORY = rom;
 
     // Listen the BUS
     while (1) {
-        const uint8_t rd = !gpio_get(RD_PIN);
-        const uint8_t wr = !gpio_get(WR_PIN);
-        const uint8_t iorq = !gpio_get(IORQ_PIN);
+        const uint8_t RD = !gpio_get(RD_PIN);
+        const uint8_t WR = !gpio_get(WR_PIN);
+        const uint8_t IORQ = !gpio_get(IORQ_PIN);
 
-#if DEBUG
-        gpio_put(PICO_DEFAULT_LED_PIN, !output_enabled);
-#endif
-
-        if (!iorq) {
+        if (!IORQ) {
             const uint32_t bus = gpio_get_all();
             const uint16_t address = bus & ADDRESS_BUS_MASK;
-            if (rd) {
+            if (RD) {
                 gpio_set_dir_out_masked(DATA_BUS_MASK);
-                put_data_on_bus(address);
-            } else /* if (wr) */ {
+                gpio_put_masked(DATA_BUS_MASK, MEMORY[address] << 16);
+            } else if (WR) {
                 gpio_set_dir_in_masked(DATA_BUS_MASK);
-                rom_pointer[address] = bus >> 16;
+                MEMORY[address] = bus >> 16;
+            } else {
+                gpio_set_dir_in_masked(DATA_BUS_MASK);
             }
         } else {
             gpio_set_dir_in_masked(DATA_BUS_MASK);
