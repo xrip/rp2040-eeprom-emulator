@@ -26,6 +26,11 @@ static inline void setup_gpio_pins() {
 
     gpio_init(IORQ_PIN);
     gpio_set_dir(IORQ_PIN, GPIO_IN);
+
+    gpio_init(SN_CS_PIN);
+    gpio_set_dir(SN_CS_PIN, GPIO_OUT);
+    gpio_put(SN_CS_PIN, 1);
+
 }
 
 int main() {
@@ -51,20 +56,33 @@ int main() {
         const uint8_t IORQ = !gpio_get(IORQ_PIN);
 
         if (!IORQ) {
-            const uint32_t bus = gpio_get_all();
-            const uint16_t address = bus & ADDRESS_BUS_MASK;
             if (RD) {
+                const uint32_t bus = gpio_get_all();
+                const uint16_t address = bus & ADDRESS_BUS_MASK;
                 gpio_set_dir_out_masked(DATA_BUS_MASK);
                 gpio_put_masked(DATA_BUS_MASK, MEMORY[address] << 16);
             } else if (WR) {
+                const uint32_t bus = gpio_get_all();
+                const uint16_t address = bus & ADDRESS_BUS_MASK;
                 gpio_set_dir_in_masked(DATA_BUS_MASK);
-                MEMORY[address] = bus >> 16;
+                MEMORY[address] = (uint8_t)(bus >> 16);
             } else {
                 gpio_set_dir_in_masked(DATA_BUS_MASK);
             }
+
         } else {
             gpio_set_dir_in_masked(DATA_BUS_MASK);
+
+            const uint32_t bus = gpio_get_all();
+            const uint16_t address = bus & ADDRESS_BUS_MASK;
+
+            if (WR && address & 64) {
+                gpio_put(SN_CS_PIN, 0);
+            } else {
+                gpio_put(SN_CS_PIN, 1);
+            }
         }
+
 
         tight_loop_contents();
     }

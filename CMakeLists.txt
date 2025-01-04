@@ -16,7 +16,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OUTPUT_DIR}")
 
 # Initialize the SDK
 pico_sdk_init()
-add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -fms-extensions -Ofast)
+add_compile_options(-flto -fwhole-program -ffast-math -ffunction-sections -fdata-sections -fms-extensions -O2)
 add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME} PRIVATE main.c)
