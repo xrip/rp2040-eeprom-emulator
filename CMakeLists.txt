@@ -21,7 +21,12 @@ add_executable(${PROJECT_NAME})
 
 target_sources(${PROJECT_NAME} PRIVATE main.c)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE pico_runtime)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+        pico_runtime
+        pico_multicore
+
+        hardware_pwm
+)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
         PICO_FLASH_SIZE_BYTES=16777216

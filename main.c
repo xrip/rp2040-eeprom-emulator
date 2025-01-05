@@ -2,12 +2,21 @@
 #include <hardware/clocks.h>
 #include <hardware/vreg.h>
 #include <stdio.h>
+#include <pico/multicore.h>
 #include <pico/time.h>
+
 
 #include "pin_definitions.h"
 #include "rom.h"
 
 //#define DEBUG 1
+#define HW_SN76489
+
+#if !defined(HW_SN76489)
+#include "sn76489.c"
+#include <hardware/pwm.h>
+#endif
+
 
 // Pointer needed if we want implement some sort of mapper that adds offset ot rom start. 
 uint8_t *MEMORY;
@@ -27,11 +36,41 @@ static inline void setup_gpio_pins() {
     gpio_init(IORQ_PIN);
     gpio_set_dir(IORQ_PIN, GPIO_IN);
 
+#if defined(HW_SN76489)
     gpio_init(SN_CS_PIN);
     gpio_set_dir(SN_CS_PIN, GPIO_OUT);
     gpio_put(SN_CS_PIN, 1);
-
+#endif
 }
+
+#if !defined(HW_SN76489)
+volatile uint8_t sn_byte = 0;
+
+void second_core() {
+    pwm_config pwm = pwm_get_default_config();
+    gpio_set_function(PWM_PIN, GPIO_FUNC_PWM);
+
+    pwm_config_set_clkdiv(&pwm, 1.0f);
+    pwm_config_set_wrap(&pwm, 4095); // MAX PWM value
+
+    pwm_init(pwm_gpio_to_slice_num(PWM_PIN), &pwm, true);
+
+    sn76489_reset();
+
+    uint8_t last_sn_byte = 0;
+    while (1) {
+        sleep_us(50);
+        if (last_sn_byte != sn_byte) {
+            last_sn_byte = sn_byte;
+
+            sn76489_out(sn_byte);
+            const int16_t sample = sn76489_sample();
+
+            pwm_set_gpio_level(PWM_PIN, (uint16_t) ((int32_t) sample + 0x8000L) >> 4);
+        }
+    }
+}
+#endif
 
 int main() {
     // Set system clock speed.
@@ -49,6 +88,10 @@ int main() {
 
     MEMORY = rom;
 
+#if !defined(HW_SN76489)
+    multicore_launch_core1(second_core);
+#endif
+
     // Listen the BUS
     while (1) {
         const uint8_t RD = !gpio_get(RD_PIN);
@@ -65,21 +108,23 @@ int main() {
                 const uint32_t bus = gpio_get_all();
                 const uint16_t address = bus & ADDRESS_BUS_MASK;
                 gpio_set_dir_in_masked(DATA_BUS_MASK);
-                MEMORY[address] = (uint8_t)(bus >> 16);
+                MEMORY[address] = (uint8_t) (bus >> 16);
             } else {
                 gpio_set_dir_in_masked(DATA_BUS_MASK);
             }
-
         } else {
             gpio_set_dir_in_masked(DATA_BUS_MASK);
 
             const uint32_t bus = gpio_get_all();
-            const uint16_t address = bus & ADDRESS_BUS_MASK;
 
-            if (WR && address & 64) {
+            if (WR && bus & 0x40) {
+#if defined(HW_SN76489)
                 gpio_put(SN_CS_PIN, 0);
-            } else {
+                sleep_us(10);
                 gpio_put(SN_CS_PIN, 1);
+#else
+                sn_byte = bus >> 16 & 0xff;
+#endif
             }
         }
 
